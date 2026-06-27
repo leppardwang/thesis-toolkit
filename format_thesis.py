@@ -17,6 +17,7 @@ TEMPLATES = {
     "hainanu": {
         "name": "海南大学",
         "code": "10589",
+        "city": "海口",
         "degrees": {
             "phd": {
                 "name": "博士学位论文",
@@ -84,7 +85,136 @@ TEMPLATES = {
                 }
             }
         }
-    }
+    },
+    "tsinghua": {
+        "name": "清华大学",
+        "code": "10003",
+        "city": "北京",
+        "degrees": {
+            "phd": {
+                "name": "博士学位论文", "title_page": "清华大学博士学位论文",
+                "header": "清华大学博士学位论文",
+                "font_cn": "SimSun", "font_heading": "SimHei", "font_en": "Times New Roman",
+                "body_size": "12pt", "heading1_size": "15pt", "heading2_size": "14pt",
+                "line_spacing": "onehalfspacing",
+                "margin_top": "2.5cm", "margin_bottom": "2.5cm", "margin_left": "3cm", "margin_right": "2.5cm",
+                "ref_style": "gb7714-2015",
+                "majors": {
+                    "计算机科学与技术": {"eng": "Computer Science", "code": "0812"},
+                    "软件工程": {"eng": "Software Engineering", "code": "0835"},
+                }
+            },
+            "master": {
+                "name": "硕士学位论文", "title_page": "清华大学硕士学位论文",
+                "header": "清华大学硕士学位论文",
+                "font_cn": "SimSun", "font_heading": "SimHei", "font_en": "Times New Roman",
+                "body_size": "12pt", "heading1_size": "14pt", "heading2_size": "12pt",
+                "line_spacing": "onehalfspacing",
+                "margin_top": "2.5cm", "margin_bottom": "2.5cm", "margin_left": "3cm", "margin_right": "2.5cm",
+                "ref_style": "gb7714-2015",
+                "majors": {
+                    "计算机技术": {"eng": "Computer Technology", "code": "0854"},
+                }
+            }
+        }
+    },
+    "zju": {
+        "name": "浙江大学",
+        "code": "10335",
+        "city": "杭州",
+        "degrees": {
+            "phd": {
+                "name": "博士学位论文", "title_page": "浙江大学博士学位论文",
+                "header": "浙江大学博士学位论文",
+                "font_cn": "SimSun", "font_heading": "SimHei", "font_en": "Times New Roman",
+                "body_size": "12pt", "heading1_size": "15pt", "heading2_size": "14pt",
+                "line_spacing": "onehalfspacing",
+                "margin_top": "2.5cm", "margin_bottom": "2.5cm", "margin_left": "3cm", "margin_right": "2.5cm",
+                "ref_style": "gb7714-2015",
+                "majors": {
+                    "计算机科学与技术": {"eng": "Computer Science", "code": "0812"},
+                }
+            }
+        }
+    },
+    "sjtu": {
+        "name": "上海交通大学",
+        "code": "10248",
+        "city": "上海",
+        "degrees": {
+            "phd": {
+                "name": "博士学位论文", "title_page": "上海交通大学博士学位论文",
+                "header": "上海交通大学博士学位论文",
+                "font_cn": "SimSun", "font_heading": "SimHei", "font_en": "Times New Roman",
+                "body_size": "12pt", "heading1_size": "15pt", "heading2_size": "14pt",
+                "line_spacing": "onehalfspacing",
+                "margin_top": "2.5cm", "margin_bottom": "2.5cm", "margin_left": "3cm", "margin_right": "2.5cm",
+                "ref_style": "gb7714-2015",
+                "majors": {
+                    "计算机科学与技术": {"eng": "Computer Science", "code": "0812"},
+                    "生物医学工程": {"eng": "Biomedical Engineering", "code": "0831"},
+                }
+            }
+        }
+    },
+    "whu": {
+        "name": "武汉大学",
+        "code": "10486",
+        "city": "武汉",
+        "degrees": {
+            "phd": {
+                "name": "博士学位论文", "title_page": "武汉大学博士学位论文",
+                "header": "武汉大学博士学位论文",
+                "font_cn": "SimSun", "font_heading": "SimHei", "font_en": "Times New Roman",
+                "body_size": "12pt", "heading1_size": "15pt", "heading2_size": "14pt",
+                "line_spacing": "onehalfspacing",
+                "margin_top": "2.5cm", "margin_bottom": "2.5cm", "margin_left": "3cm", "margin_right": "2.5cm",
+                "ref_style": "gb7714-2015",
+                "majors": {
+                    "计算机科学与技术": {"eng": "Computer Science", "code": "0812"},
+                }
+            }
+        }
+    },
+    "hust": {
+        "name": "华中科技大学",
+        "code": "10487",
+        "city": "武汉",
+        "degrees": {
+            "phd": {
+                "name": "博士学位论文", "title_page": "华中科技大学博士学位论文",
+                "header": "华中科技大学博士学位论文",
+                "font_cn": "SimSun", "font_heading": "SimHei", "font_en": "Times New Roman",
+                "body_size": "12pt", "heading1_size": "15pt", "heading2_size": "14pt",
+                "line_spacing": "onehalfspacing",
+                "margin_top": "2.5cm", "margin_bottom": "2.5cm", "margin_left": "3cm", "margin_right": "2.5cm",
+                "ref_style": "gb7714-2015",
+                "majors": {
+                    "计算机科学与技术": {"eng": "Computer Science", "code": "0812"},
+                }
+            }
+        }
+    },
+    "sysu": {
+        "name": "中山大学",
+        "code": "10558",
+        "city": "广州",
+        "degrees": {
+            "phd": {
+                "name": "博士学位论文", "title_page": "中山大学博士学位论文",
+                "header": "中山大学博士学位论文",
+                "font_cn": "SimSun", "font_heading": "SimHei", "font_en": "Times New Roman",
+                "body_size": "12pt", "heading1_size": "15pt", "heading2_size": "14pt",
+                "line_spacing": "onehalfspacing",
+                "margin_top": "2.5cm", "margin_bottom": "2.5cm", "margin_left": "3cm", "margin_right": "2.5cm",
+                "ref_style": "gb7714-2015",
+                "majors": {
+                    "计算机科学与技术": {"eng": "Computer Science", "code": "0812"},
+                    "生物医学工程": {"eng": "Biomedical Engineering", "code": "0831"},
+                }
+            }
+        }
+    },
 }
 
 
