@@ -58,9 +58,12 @@ def check_format(tex_path):
     fname = os.path.basename(tex_path)
     issues = []
     
-    # 1. 检查必要宏包
+    # 1. 检查必要宏包（支持多行选项）
+    content_flat = re.sub(r'\n\s*', ' ', content)  # 多行合并为一行
     for pkg, purpose in REQUIRED_PACKAGES:
-        if not re.search(r'\\usepackage(\[.*?\])?\{' + pkg + r'\}', content):
+        if pkg == 'xeCJK' and ('ctexbook' in content or 'ctexart' in content or 'ctexrep' in content):
+            continue  # ctex文档类已内置xeCJK
+        if not re.search(r'\\usepackage(\[.*?\])?\{' + pkg + r'\}', content_flat):
             issues.append(f'[格式] 缺少宏包 {pkg}（{purpose}）')
     
     # 2. 检查页面设置
@@ -131,13 +134,27 @@ def count_sentences(text):
 def check_style(tex_path):
     """检查写作质量"""
     with open(tex_path, 'r', encoding='utf-8') as f:
-        content = f.read()
+        raw = f.read()
     
     fname = os.path.basename(tex_path)
     issues = []
     
+    # 跳过preamble（\\begin{document}之前的内容），只检查正文
+    preamble_end = 0
+    doc_match = re.search(r'\\begin\{document\}', raw)
+    if doc_match:
+        preamble_end = doc_match.end()
+        content = raw[preamble_end:]  # 只检查正文
+    else:
+        content = raw  # 没有document环境，检查全文
+    
+    line_offset = raw[:preamble_end].count('\n') + 1 if preamble_end else 0
+    raw_lines = raw.split('\n')
+    
     # 机械化写作
-    for i, line in enumerate(content.split('\n'), 1):
+    for i, line in enumerate(raw_lines, 1):
+        if i <= line_offset:
+            continue
         if line.strip().startswith('%'):
             continue
         for pattern, desc in MECHANICAL_PATTERNS:
@@ -152,7 +169,8 @@ def check_style(tex_path):
     skip_cmds = ['\\centering', '\\hfill', '\\includegraphics', '\\caption', '\\label',
                  '\\begin', '\\end', '\\hline', '\\toprule', '\\midrule', '\\bottomrule',
                  '\\subsection', '\\subsubsection', '\\section', '\\chapter', '\\item',
-                 '\\State', '\\For', '\\End', '\\While']
+                 '\\State', '\\For', '\\End', '\\While',
+                 '\\backmatter', '\\printbibliography', '\\include', '\\input', '\\addbibresource']
     
     para_lines = []
     for i, line in enumerate(cleaned.split('\n')):
@@ -182,7 +200,9 @@ def check_style(tex_path):
         issues.append((0, f'[引用] 全文仅{total_cites}篇，建议80-120篇'))
     
     # 残留Markdown粗体
-    for i, line in enumerate(content.split('\n'), 1):
+    for i, line in enumerate(raw_lines, 1):
+        if i <= line_offset:
+            continue
         if '**' in line and not line.strip().startswith('%'):
             ctx = line.strip()[:50]
             issues.append((i, f'[Markdown] "**"需替换\\textbf: "{ctx}..."'))
@@ -191,6 +211,12 @@ def check_style(tex_path):
 
 
 def main():
+    # 修复Windows GBK终端emoji编码问题
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+    
     if len(sys.argv) < 3:
         print(__doc__)
         sys.exit(1)
@@ -212,7 +238,7 @@ def main():
             fname, issues = check_format(fpath)
             if issues:
                 print(f'\n{"="*50}')
-                print(f'📐 {fname} — 格式问题 {len(issues)} 项')
+                print(f'[FORMAT] {fname} - {len(issues)} issue(s)')
                 print(f'{"="*50}')
                 for desc in issues:
                     print(f'  {desc}')
@@ -222,7 +248,7 @@ def main():
             fname, issues = check_style(fpath)
             if issues:
                 print(f'\n{"="*50}')
-                print(f'✏️ {fname} — 写作问题 {len(issues)} 项')
+                print(f'[STYLE] {fname} - {len(issues)} issue(s)')
                 print(f'{"="*50}')
                 for line_num, desc in issues:
                     loc = f'第{line_num}行' if line_num > 0 else ''
@@ -230,9 +256,9 @@ def main():
                 total += len(issues)
     
     if total == 0:
-        print('\n✅ 完美！未发现问题')
+        print('\n[OK] No issues found.')
     else:
-        print(f'\n📊 总计 {total} 项')
+        print(f'\n[SUMMARY] Total: {total} issue(s)')
 
 if __name__ == '__main__':
     main()
