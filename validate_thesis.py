@@ -1,182 +1,238 @@
 #!/usr/bin/env python3
 """
-学位论文质量自动检测工具 — 检查机械化写作、段落长度、格式问题
+学位论文格式自动检测工具 — 双模式：格式合规 + 写作质量
 
 用法:
-  python validate_thesis.py [tex文件或目录]
-  
+  # 格式合规检查（检查TeX模板配置）
+  python validate_thesis.py format thesis_main.tex
+
+  # 写作质量检查（检查内容风格）
+  python validate_thesis.py style chapter4_experiments.tex
+
+  # 全量检查
+  python validate_thesis.py all chapters/
+
 检查项:
-  1. 机械化写作模式（首先/其次/一方面/另一方面列表式）
+  [格式]
+  1. 页面设置 (geometry: 上下2.5cm, 左3cm右2.5cm)
+  2. 字体配置 (SimSun/SimHei/Times New Roman)
+  3. 页眉页脚 (fancyhdr配置)
+  4. 章节编号 (chapter/section/subsection结构)
+  5. 参考文献格式 (biblatex + gb7714-2015)
+  6. 图表浮动参数 (htbp)
+  7. 前文结构 (摘要/目录/符号表)
+  8. 后文结构 (参考文献/附录/致谢)
+
+  [写作]
+  1. 机械化模式（首先/其次/列表式）
   2. 过短段落（<3句话）
-  3. 残留**粗体**标记
-  4. 缺少引用的段落
-  5. 章节标题格式
-  6. 参考文献密度
+  3. 残留Markdown粗体
+  4. 引用密度不足
 """
 
 import os, re, sys
 from collections import defaultdict
 
-# 机械化写作模式关键词
+# ===== 格式检查规则 =====
+REQUIRED_GEOMETRY = {
+    'top': '2.5cm', 'bottom': '2.5cm',
+    'left': '3cm', 'right': '2.5cm'
+}
+REQUIRED_FONTS = ['SimSun', 'SimHei', 'Times New Roman']
+REQUIRED_PACKAGES = [
+    ('geometry', '页面设置'),
+    ('fontspec', '英文字体'),
+    ('xeCJK', '中文字体'),
+    ('fancyhdr', '页眉页脚'),
+    ('biblatex', '参考文献'),
+    ('graphicx', '插图'),
+    ('hyperref', '超链接'),
+    ('setspace', '行距'),
+]
+
+def check_format(tex_path):
+    """检查TeX模板格式合规性"""
+    with open(tex_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    fname = os.path.basename(tex_path)
+    issues = []
+    
+    # 1. 检查必要宏包
+    for pkg, purpose in REQUIRED_PACKAGES:
+        if not re.search(r'\\usepackage(\[.*?\])?\{' + pkg + r'\}', content):
+            issues.append(f'[格式] 缺少宏包 {pkg}（{purpose}）')
+    
+    # 2. 检查页面设置
+    for key, val in REQUIRED_GEOMETRY.items():
+        pattern = rf'{key}\s*=\s*{re.escape(val)}'
+        if not re.search(pattern, content):
+            found = re.search(rf'{key}\s*=\s*([^\s,}}]+)', content)
+            found_val = found.group(1) if found else '未设置'
+            issues.append(f'[格式] 页面 {key} 应为{val}，当前为 {found_val}')
+    
+    # 3. 检查字体
+    for font in REQUIRED_FONTS:
+        if font not in content:
+            issues.append(f'[字体] 未配置 {font}')
+    
+    # 4. 检查页眉页脚
+    if '\\pagestyle{fancy}' not in content:
+        issues.append('[格式] 未启用 fancyhdr 页眉页脚')
+    if '\\fancyhead' not in content:
+        issues.append('[格式] 缺少页眉设置 (\\fancyhead)')
+    if '\\fancyfoot' not in content and '\\thepage' not in content:
+        issues.append('[格式] 缺少页码设置')
+    
+    # 5. 检查文档结构
+    if '\\frontmatter' not in content:
+        issues.append('[结构] 缺少 \\frontmatter')
+    if '\\mainmatter' not in content:
+        issues.append('[结构] 缺少 \\mainmatter')
+    if '\\backmatter' not in content:
+        issues.append('[结构] 缺少 \\backmatter')
+    if '\\tableofcontents' not in content:
+        issues.append('[结构] 缺少目录 \\tableofcontents')
+    
+    # 6. 检查参考文献
+    if 'biblatex' in content and 'gb7714' not in content:
+        issues.append('[引用] 建议使用gb7714-2015国标参考文献格式')
+    if '\\printbibliography' not in content:
+        issues.append('[引用] 缺少 \\printbibliography')
+    
+    # 7. 检查图表浮动参数
+    bad_floats = re.findall(r'\\begin\{figure\}\[.*?[^htbp].*?\]', content)
+    if bad_floats:
+        issues.append(f'[图表] {len(bad_floats)}处浮动参数不含htbp')
+    
+    # 8. 检查附录和致谢
+    if '\\begin{appendix}' not in content and '\\appendix' not in content:
+        issues.append('[结构] 缺少附录')
+    if 'acknowledgements' not in content and '致谢' not in content:
+        issues.append('[结构] 缺少致谢')
+    
+    return fname, issues
+
+
+# ===== 写作质量检查（原validate功能）=====
 MECHANICAL_PATTERNS = [
     (r'首先.*?其次.*?再次', '三连列表式"首先…其次…再次"'),
     (r'一方面.*?另一方面', '对列式"一方面…另一方面"'),
-    (r'第一，.*?第二，.*?第三', '数字列表式"第一…第二…第三"'),
-    (r'(功能|需求|特点|优点|缺点)[一二三]', '功能列表式'),
-    (r'(需要|需满足).*?功能需求.*?功能需求', '需求枚举式'),
+    (r'第一，.*?第二，.*?第三，', '数字列表式"第一…第二…第三"'),
+    (r'(需要|需满足).*?功能需求', '需求枚举式'),
 ]
 
-# 长段落阈值（字符数）
-MIN_PARAGRAPH_LEN = 100
-# 短句子阈值
-MIN_SENTENCES = 3
-
 def count_sentences(text):
-    """估算句子数"""
-    text = re.sub(r'\$[^$]+\$', '', text)  # 去掉公式
-    text = re.sub(r'\\[a-zA-Z]+', '', text)  # 去掉LaTeX命令
-    # 按句号/问号/感叹号/换行分割
-    sentences = re.split(r'[。！？\n]', text)
-    return len([s for s in sentences if len(s.strip()) > 5])
+    text = re.sub(r'\$[^$]+\$', '', text)
+    text = re.sub(r'\\[a-zA-Z]+', '', text)
+    sents = re.split(r'[。！？\n]', text)
+    return len([s for s in sents if len(s.strip()) > 5])
 
-def check_mechanical_writing(content, filename):
-    """检查机械化写作模式"""
+def check_style(tex_path):
+    """检查写作质量"""
+    with open(tex_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    fname = os.path.basename(tex_path)
     issues = []
+    
+    # 机械化写作
     for i, line in enumerate(content.split('\n'), 1):
         if line.strip().startswith('%'):
             continue
         for pattern, desc in MECHANICAL_PATTERNS:
             if re.search(pattern, line, re.DOTALL):
-                # 提取上下文
-                ctx = line.strip()[:80]
+                ctx = line.strip()[:60]
                 issues.append((i, f'[机械化] {desc}: "{ctx}..."'))
-    return issues
-
-def check_short_paragraphs(content, filename):
-    """检查过短段落（跳过表格/图表/算法/命令）"""
-    issues = []
-    cleaned = re.sub(r'\\begin\{table\}.*?\\end\{table\}', '[TABLE]', content, flags=re.DOTALL)
-    cleaned = re.sub(r'\\begin\{figure\}.*?\\end\{figure\}', '[FIGURE]', cleaned, flags=re.DOTALL)
-    cleaned = re.sub(r'\\begin\{algorithm\}.*?\\end\{algorithm\}', '[ALGORITHM]', cleaned, flags=re.DOTALL)
-    cleaned = re.sub(r'\\begin\{tabular\}.*?\\end\{tabular\}', '[TABLE]', cleaned, flags=re.DOTALL)
+    
+    # 过短段落（跳过表格/图表/算法）
+    cleaned = re.sub(r'\\begin\{(table|figure|algorithm)\}.*?\\end\{\1\}', '', content, flags=re.DOTALL)
+    cleaned = re.sub(r'\\begin\{tabular\}.*?\\end\{tabular\}', '', cleaned, flags=re.DOTALL)
     
     skip_cmds = ['\\centering', '\\hfill', '\\includegraphics', '\\caption', '\\label',
                  '\\begin', '\\end', '\\hline', '\\toprule', '\\midrule', '\\bottomrule',
                  '\\subsection', '\\subsubsection', '\\section', '\\chapter', '\\item',
-                 '\\State', '\\For', '\\End', '\\While', '\\Comment',
-                 '\\textbf{关键发现', '\\textbf{发现']
+                 '\\State', '\\For', '\\End', '\\While']
     
-    lines = cleaned.split('\n')
     para_lines = []
-    for i, line in enumerate(lines):
+    for i, line in enumerate(cleaned.split('\n')):
         s = line.strip()
         if not s or s.startswith('%') or any(s.startswith(c) for c in skip_cmds):
             if para_lines:
                 para_text = ' '.join(para_lines)
                 sents = count_sentences(para_text)
-                if sents < MIN_SENTENCES and len(para_text) < MIN_PARAGRAPH_LEN * 2:
-                    # 找上下文
-                    ctx = para_text[:100]
-                    issues.append((i, f'[过短段落] {sents}句话, {len(para_text)}字: "{ctx}..."'))
+                if sents < 3 and len(para_text) > 30:
+                    ctx = para_text[:80]
+                    issues.append((i, f'[过短] {sents}句, {len(para_text)}字: "{ctx}..."'))
                 para_lines = []
             continue
         para_lines.append(s)
-    return issues
-
-def check_markdown_bold(content, filename):
-    """检查残留的**粗体**"""
-    issues = []
+    
+    # 引用密度
+    total_cites = len(re.findall(r'\\cite\{', content))
+    sections = re.split(r'\\section\{', content)
+    for j, sec in enumerate(sections):
+        if len(sec) > 500:
+            sec_name = sec.split('}')[0] if '}' in sec else f'第{j}节'
+            cites = len(re.findall(r'\\cite\{', sec))
+            if cites < 3:
+                issues.append((0, f'[引用] "{sec_name}" 仅{cites}篇引用 ({len(sec)}字)'))
+    
+    if total_cites < 30:
+        issues.append((0, f'[引用] 全文仅{total_cites}篇，建议80-120篇'))
+    
+    # 残留Markdown粗体
     for i, line in enumerate(content.split('\n'), 1):
         if '**' in line and not line.strip().startswith('%'):
-            ctx = line.strip()[:60]
-            issues.append((i, f'[Markdown粗体] 需替换为\\textbf{{}}: "{ctx}..."'))
-    return issues
-
-def check_citation_density(content, filename):
-    """检查各章节引用密度"""
-    issues = []
-    # 按章节分割
-    sections = re.split(r'(\\section\{[^}]+\}|\\chapter\{[^}]+\})', content)
-    for j in range(0, len(sections)-1, 2):
-        section_name = re.sub(r'\\(section|chapter)\{([^}]+)\}', r'\2', sections[j]) if j < len(sections) else '全文'
-        section_content = sections[j+1] if j+1 < len(sections) else ''
-        cites = len(re.findall(r'\\cite\{', section_content))
-        chars = len(section_content)
-        if chars > 200 and cites == 0:
-            issues.append((0, f'[缺少引用] "{section_name}" 无任何引用'))
-        elif chars > 500 and cites < 2:
-            issues.append((0, f'[引用不足] "{section_name}" 仅{cites}篇引用 ({chars}字)'))
-    # 全文总引用
-    total_cites = len(re.findall(r'\\cite\{', content))
-    if total_cites < 30:
-        issues.append((0, f'[引用不足] 全文仅{total_cites}篇引用，建议80-120篇'))
-    return issues
-
-def check_chapter_numbering(content, filename):
-    """检查章节编号一致性"""
-    issues = []
-    chapters = re.findall(r'\\(section|subsection|subsubsection)\{', content)
-    counter = defaultdict(int)
-    for cmd in chapters:
-        counter[cmd] += 1
-    # 章节数量预警
-    if counter['section'] == 0:
-        issues.append((0, '[章节结构] 无任何\\section，建议每章至少3-5节'))
-    return issues
-
-
-def validate_file(filepath):
-    """验证单个tex文件"""
-    with open(filepath, 'r', encoding='utf-8') as f:
-        content = f.read()
+            ctx = line.strip()[:50]
+            issues.append((i, f'[Markdown] "**"需替换\\textbf: "{ctx}..."'))
     
-    fname = os.path.basename(filepath)
-    all_issues = []
-    all_issues.extend(check_mechanical_writing(content, fname))
-    all_issues.extend(check_short_paragraphs(content, fname))
-    all_issues.extend(check_markdown_bold(content, fname))
-    all_issues.extend(check_citation_density(content, fname))
-    all_issues.extend(check_chapter_numbering(content, fname))
-    
-    return fname, all_issues
+    return fname, issues
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("用法: python validate_thesis.py <tex文件或目录>")
+    if len(sys.argv) < 3:
+        print(__doc__)
         sys.exit(1)
     
-    path = sys.argv[1]
+    mode = sys.argv[1]
+    target = sys.argv[2]
+    
     files = []
-    if os.path.isfile(path):
-        files.append(path)
-    elif os.path.isdir(path):
-        for f in sorted(os.listdir(path)):
+    if os.path.isfile(target):
+        files.append(target)
+    elif os.path.isdir(target):
+        for f in sorted(os.listdir(target)):
             if f.endswith('.tex'):
-                files.append(os.path.join(path, f))
+                files.append(os.path.join(target, f))
     
-    total_issues = 0
+    total = 0
     for fpath in files:
-        fname, issues = validate_file(fpath)
-        n = len(issues)
-        total_issues += n
-        if n > 0:
-            print(f'\n{"="*60}')
-            print(f'📄 {fname} — 发现 {n} 个问题')
-            print(f'{"="*60}')
-            for line_num, desc in issues:
-                loc = f'第{line_num}行' if line_num > 0 else ''
-                print(f'  {loc:8s} {desc}')
+        if mode == 'format' or mode == 'all':
+            fname, issues = check_format(fpath)
+            if issues:
+                print(f'\n{"="*50}')
+                print(f'📐 {fname} — 格式问题 {len(issues)} 项')
+                print(f'{"="*50}')
+                for desc in issues:
+                    print(f'  {desc}')
+                total += len(issues)
+        
+        if mode == 'style' or mode == 'all':
+            fname, issues = check_style(fpath)
+            if issues:
+                print(f'\n{"="*50}')
+                print(f'✏️ {fname} — 写作问题 {len(issues)} 项')
+                print(f'{"="*50}')
+                for line_num, desc in issues:
+                    loc = f'第{line_num}行' if line_num > 0 else ''
+                    print(f'  {loc:12s} {desc}')
+                total += len(issues)
     
-    print(f'\n{"="*60}')
-    if total_issues == 0:
-        print('✅ 完美！未发现问题')
+    if total == 0:
+        print('\n✅ 完美！未发现问题')
     else:
-        severity = '轻微' if total_issues < 10 else ('中等' if total_issues < 30 else '严重')
-        print(f'📊 总计 {total_issues} 个问题（{severity}）')
-        print(f'   建议优先修复: 机械化写作 > 过短段落 > 引用不足')
-    print(f'{"="*60}')
-
+        print(f'\n📊 总计 {total} 项')
 
 if __name__ == '__main__':
     main()

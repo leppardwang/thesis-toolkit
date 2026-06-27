@@ -292,8 +292,46 @@ FL、DP
 | 海南大学 | 计算机/监管 | 申朋旭 | 基于智能合约的医师电子执业证照监管模型研究 | 81页 |
 | 北京大学 | 公共卫生/管理 | 王伟嵩 | 医院信息化外包风险评价研究 | 132页 |
 
-## 八、配套工具
-- `format_thesis.py` — LaTeX模板生成（海南大学ctexbook模板）
-- `tex2docx.py` — TeX→Word转换（含图插入）
-- `fix_tex_bold.py` — `**粗体**` → `\textbf{}` 批量修复
-- `generate_figures.py` — 论文级PNG图生成（300dpi）
+## 八、机器验证体系（三格式统一校验）
+
+目标：无论最终输出 TeX / Word / PDF，格式保持一致，减少人工核对。
+
+### 8.1 格式合规验证（format 模式）
+```bash
+python validate_thesis.py format thesis_main.tex
+```
+自动检测：
+- ✅ 页面边距：上下2.5cm, 左3cm右2.5cm
+- ✅ 字体配置：SimSun(正文) / SimHei(标题) / Times New Roman(英文)
+- ✅ 宏包完整性：geometry / fontspec / xeCJK / fancyhdr 等8项
+- ✅ 文档结构：\frontmatter → \mainmatter → \backmatter
+- ✅ 页眉页脚：\fancyhead / \fancyfoot / \thepage
+- ✅ 参考文献：biblatex + gb7714-2015
+- ✅ 附录与致谢
+
+### 8.2 写作质量验证（style 模式）
+```bash
+python validate_thesis.py style chapter4.tex
+```
+自动检测：
+- ✅ 机械化写作：首先/其次/列表式模式
+- ✅ 过短段落：<3句话标记
+- ✅ 引用密度：每节<3篇标记，全文<30篇警告
+- ✅ 残留Markdown：`**粗体**` 未转为 `\textbf{}`
+
+### 8.3 格式稳定性保障机制
+```python
+# 每次修改后自动运行：
+# 1. format检测 → 模板配置不变
+# 2. style检测 → 写作质量不退化
+# 3. git diff → 确认改动范围
+```
+
+### 8.4 跨格式一致性保障
+| 格式 | 源文件 | 校验方法 | 自动修复 |
+|------|--------|---------|---------|
+| TeX | .tex | validate_thesis.py format/style | fix_tex_bold.py |
+| Word | .docx | tex2docx.py 生成 | 重新生成 |
+| PDF | .pdf | xelatex 编译（需MiKTeX） | 重新编译 |
+
+**核心原则**：所有修改在 TeX 源文件上进行，Word 和 PDF 均由 TeX 生成，避免三格式各自维护的不一致。
