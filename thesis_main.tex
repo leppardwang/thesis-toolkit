@@ -1,0 +1,113 @@
+% 海南大学博士学位论文 — 生物医学工程
+% 生成时间: 2026-06-28 20:00
+% 使用 xelatex 编译
+% 使用方法: xelatex thesis_main.tex
+
+\documentclass[12pt, a4paper, oneside, openany, indentfirst]{ctexbook}
+
+% 页面设置
+\usepackage[a4paper,
+    top=2.5cm, bottom=2.5cm,
+    left=3cm, right=2.5cm,
+    headheight=1.5cm, footskip=1.5cm,
+    includehead, includefoot]{geometry}
+
+% 英文字体
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+\setmonofont{Courier New}
+
+% 中文字体
+\setCJKmainfont{SimSun}      % 正文
+\setCJKsansfont{SimHei}  % 标题
+\setCJKmonofont{FangSong}
+
+% 中文版式
+\ctexset{
+    chapter = {
+        format = {\zihao{-2}\heiti\centering},
+        name = {第,章},
+        number = {\arabic{chapter}},
+        beforeskip = {20pt},
+        afterskip = {30pt},
+    },
+    section = {
+        format = {\zihao{4}\heiti},
+        beforeskip = {12pt},
+        afterskip = {6pt},
+    },
+    subsection = {
+        format = {\zihao{-4}\heiti},
+        beforeskip = {6pt},
+        afterskip = {3pt},
+    },
+    subsubsection = {
+        format = {\zihao{-4}\heiti},
+        numbering = {\arabic{subsubsection}},
+        beforeskip = {6pt},
+        afterskip = {3pt},
+    },
+}
+
+% 行距
+\usepackage{setspace}
+\onehalfspacing
+
+% 首行缩进（中文论文标准：2字符）
+\setlength{\parindent}{2em}
+
+% 数学
+\usepackage{amsmath, amssymb, amsthm}
+
+% 图表
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[font=small, labelfont=bf]{caption}
+\graphicspath{{figures/}{chapters/figures/}}
+
+% 参考文献 (如需编译参考文献，请确保 references/references.bib 存在)
+% 暂时注释掉以允许首次编译
+% \usepackage[backend=biber, style=gb7714-2015, sortcites]{biblatex}
+% \addbibresource{references/references.bib}
+
+% 超链接
+\usepackage[hidelinks]{hyperref}
+
+% 页眉页脚
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\heiti\zihao{5}海南大学博士学位论文}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% 字号命令（ctexbook已内置，移除自定义定义避免冲突）
+
+\begin{document}
+
+\frontmatter
+
+% 封面（待补充学校模板）
+% \include{chapters/abstract}
+
+% 目录
+\tableofcontents
+
+\mainmatter
+
+% === 正文各章节 ===
+\include{chapters_tex/chapter_01}
+\include{chapters_tex/chapter_02}
+\include{chapters_tex/chapter_03}
+\include{chapters_tex/chapter_04}
+\include{chapters_tex/chapter_05}
+\include{chapters_tex/chapter_06}
+
+\backmatter
+% \printbibliography[heading=bibintoc]
+% \begin{appendix}
+% \include{appendices/appendix_a}
+% \end{appendix}
+% \include{acknowledgements}
+\end{document}
